@@ -79,10 +79,13 @@ are spatially correlated. Those three facts drive almost every design decision b
   features rank LOW (likely redundant with gravity, correlated); logistic coefficients show
   multicollinearity-driven sign flips -> trust permutation+PDP over raw coefficients here.
 
-## Phase 5 — Validation, uncertainty & communication
-- Prospectivity map (calibrated probability raster) + capture-efficiency curve
-- Uncertainty: where is the model extrapolating vs interpolating? (feature-space distance)
-- Honest write-up: what would I tell someone about to spend drilling money on this?
+## Phase 5 — Validation, uncertainty & communication  (in progress)
+- ✅ **Prospectivity map** (`src/modeling/predict_map.py`, figure 11 + `outputs/prospectivity.tif`):
+  final calibrated GBM scored over all 506,910 valid cells. Hot zones trace greenstone/structural
+  trends and overlie known deposits (which were NOT given at prediction time). Range 0.04-0.90.
+- ⏭ Capture-efficiency / success-rate curve: drill top X% of ranked area -> % of known deposits caught.
+- ⏭ Uncertainty: where is the model extrapolating vs interpolating? (feature-space novelty)
+- ⏭ Honest write-up: what would I tell someone about to spend drilling money on this?
 
 ---
 
