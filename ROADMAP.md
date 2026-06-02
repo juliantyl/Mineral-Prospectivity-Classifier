@@ -57,11 +57,27 @@ are spatially correlated. Those three facts drive almost every design decision b
   repeats **±0.018** (estimate is stable), std across 50 folds ±0.058 (real district variability),
   ROC-AUC 0.806. The single-partition 0.155 was a pessimistic draw; 0.190 is the headline estimate.
 
-## Phase 4 — Modeling
-- Baseline: logistic regression (interpretable, sanity check)
-- Gradient boosting: XGBoost / LightGBM with spatial CV for hyperparameters
-- **Calibration:** raw GBM scores aren't probabilities; calibrate so a "0.8" means something
-- Feature importance + partial dependence → does the model agree with known geology?
+## Phase 4 — Modeling  (in progress)
+- ✅ **Baseline** (`src/modeling/baseline.py`): logistic regression (StandardScaler in-pipeline,
+  fit on train fold only; class_weight balanced) vs LightGBM, both under repeated spatial CV.
+  RESULT (figure 07): logreg AP 0.169 ± 0.011, GBM AP 0.190 ± 0.018 -> GBM +12% (interactions).
+  Most of the signal is LINEAR; GBM earns a modest, honest lift. (`repeated_cv.py` now exposes
+  `repeated_spatial_cv(make_model, ...)` as the shared engine.)
+- ⏭ Gradient boosting: optional light hyperparameter tuning under spatial CV (skipped — low value).
+- ✅ **Calibration** (`src/modeling/calibrate.py`): leakage-safe 3-way spatial split
+  (model-train / calibration / test blocks all disjoint, rotated over outer folds).
+  Sigmoid(Platt) vs isotonic. RESULT (figure 08): ECE 0.0337 -> 0.0066 (sigmoid) / 0.0064 (isotonic),
+  Brier 0.0461 -> 0.0458 / 0.0447. AP: sigmoid 0.1266 == raw 0.1266 (strictly monotone preserves
+  ranking); isotonic dips to 0.1154 (ties). AP here < 0.190 headline because nested split trains
+  each model on less data. CAVEAT: calibrated to TRAINING prevalence (4.76%), NOT field prevalence
+  (unknown in PU) -> treat outputs as relative prospectivity, not absolute drill-success probs.
+- ✅ **Interpretation** (`src/modeling/interpret.py`, figures 09-10): permutation importance on
+  held-out spatial folds + partial dependence + logistic coefficients. Top drivers: rad_k_fstd
+  (K-alteration texture), grav_cba (gravity = greenstone vs granite), k_th (alteration ratio),
+  rad_th. PDP directions all geologically COHERENT: prospectivity rises with K-alteration texture
+  and gravity (greenstone belts), falls with thorium (felsic/granite). Honest findings: magnetic
+  features rank LOW (likely redundant with gravity, correlated); logistic coefficients show
+  multicollinearity-driven sign flips -> trust permutation+PDP over raw coefficients here.
 
 ## Phase 5 — Validation, uncertainty & communication
 - Prospectivity map (calibrated probability raster) + capture-efficiency curve
