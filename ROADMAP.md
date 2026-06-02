@@ -41,14 +41,21 @@ are spatially correlated. Those three facts drive almost every design decision b
   must correct to true base rate (ranking unaffected). Grid resolution sets effective
   positive count. QC figures 02 (aligned stack) + 03 (sample distribution).
 
-## Phase 3 — The hard parts (this is the project)
-- **Class imbalance:** positives may be <0.1%. Accuracy is meaningless. We'll use
-  precision-recall, average precision, and ranking metrics (e.g. success-rate / capture curves).
-- **Negative selection:** "unlabelled ≠ negative." We'll treat this as positive-unlabelled-ish:
-  sample background cells, keep a buffer around known deposits, and be explicit about the assumption.
-- **Spatial cross-validation:** the trap. Random splits leak because train/test cells are
-  neighbours. We'll use spatial *block* CV (and discuss buffered leave-one-out). We will
-  *show* the gap between random-CV AUC (inflated) and spatial-CV AUC (honest).
+## Phase 3 — The hard parts (this is the project) ✅
+- **Negative selection** handled in Phase 2 (buffered random background, PU framing).
+- **Spatial cross-validation** (`src/modeling/spatial_cv.py`): demonstrated the trap by
+  running the SAME LightGBM under random StratifiedKFold vs GroupKFold over 20 km blocks.
+  RESULT (figure 04):
+    - random K-fold : AP 0.683 ± 0.014 | ROC-AUC 0.958 ± 0.004  (LEAKS)
+    - spatial block : AP 0.155 ± 0.067 | ROC-AUC 0.779 ± 0.046  (honest)
+    - no-skill AP = 0.048; honest model is ~3.3x better than random -> real but modest signal.
+- **Lessons:** AP collapses ~4x (the leak); ROC-AUC stays optimistic under imbalance (why AP
+  is our headline metric); honest CV also reveals real region-to-region variance (bigger error
+  bars). 20 km blocks chosen to exceed autocorrelation range + the 1.25 km focal window.
+- **Repeated spatial CV** (`src/modeling/repeated_cv.py`): 10 repeats x 5 folds, jittering block
+  origin + randomising block->fold each repeat. RESULT (figure 06): AP **0.190**, std across
+  repeats **±0.018** (estimate is stable), std across 50 folds ±0.058 (real district variability),
+  ROC-AUC 0.806. The single-partition 0.155 was a pessimistic draw; 0.190 is the headline estimate.
 
 ## Phase 4 — Modeling
 - Baseline: logistic regression (interpretable, sanity check)
