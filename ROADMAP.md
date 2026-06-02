@@ -26,13 +26,20 @@ are spatially correlated. Those three facts drive almost every design decision b
   (metres) so "distance" and "neighbourhood" mean something physical. Gravity is far coarser than
   magnetics/radiometrics — resampling to a common grid is a real decision, not a formality.
 
-## Phase 2 — Feature engineering (rasters + points)
-- Resample all grids to a common resolution & grid (align rasters)
-- Per-cell features: raw bands + derivatives (magnetic gradients, analytic signal),
-  neighbourhood stats (focal mean/std), distance-to-feature (e.g. interpreted faults if available)
-- Fuse point geochem into the grid (interpolate / nearest sample)
-- Build the labelled table: every grid cell is a row; `y=1` if a deposit falls in it.
-  **Teaching note:** how we choose negatives matters enormously (see Phase 3).
+## Phase 2 — Feature engineering (rasters + points) ✅
+- **Step 1 align** (`src/features/align.py`): all 7 grids resampled onto one 776x676 grid
+  @ 250 m in MGA Zone 51. Method by direction: AVERAGE when coarsening (mag/rad ~100 m),
+  BILINEAR when interpolating (gravity ~464 m). -> `data/interim/features_aligned.tif`.
+- **Step 2 features** (`src/features/build_features.py`): 18 bands = 7 raw + 3 radiometric
+  ratios (K/Th, U/Th, K/U) + focal mean/std (1.25 km window) on mag/grav/rad.
+  -> `data/interim/features_enriched.tif`.
+- **Step 3 labels** (`src/features/labels.py`): PU labelling. 1182 gold points -> 508 grid
+  cells (250 m collapses dense camps) -> 2291 positives with 1-cell halo. Negatives =
+  buffered (1 km) random background at 1:20. -> `data/processed/training_table.csv`
+  (48,111 rows, 4.76% pos, 0 NaNs, cols: x, y_coord, label, 18 features).
+- **Teaching notes:** ratio is artificial -> probabilities inflated -> Phase 4 calibration
+  must correct to true base rate (ranking unaffected). Grid resolution sets effective
+  positive count. QC figures 02 (aligned stack) + 03 (sample distribution).
 
 ## Phase 3 — The hard parts (this is the project)
 - **Class imbalance:** positives may be <0.1%. Accuracy is meaningless. We'll use
